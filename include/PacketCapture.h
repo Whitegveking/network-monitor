@@ -64,6 +64,12 @@ public:
     void stopCapture();
     
     /**
+     * @brief 设置数据包处理回调函数
+     * @param handler 回调函数
+     */
+    void setPacketHandler(PacketHandler handler);
+    
+    /**
      * @brief 保存到文件
      * @param filename 文件名
      * @return 是否成功

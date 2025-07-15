@@ -98,6 +98,10 @@ void PacketCapture::stopCapture() {
     logger.info("数据包捕获已停止");
 }
 
+void PacketCapture::setPacketHandler(PacketHandler handler) {
+    packetHandler_ = handler;
+}
+
 bool PacketCapture::saveToFile(const std::string& filename) {
     auto& logger = Logger::getInstance();
     
