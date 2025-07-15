@@ -157,6 +157,10 @@ void PacketCapture::packetCallback(u_char* user, const struct pcap_pkthdr* heade
                                   const u_char* packet) {
     PacketCapture* capture = reinterpret_cast<PacketCapture*>(user);
     
+    // 添加调试信息
+    auto& logger = Logger::getInstance();
+    logger.info("捕获到数据包，长度: " + std::to_string(header->len));
+    
     // 解析数据包
     PacketInfo packetInfo = capture->parsePacket(header, packet);
     
@@ -234,15 +238,29 @@ void PacketCapture::parseUDP(const u_char* packet, PacketInfo& info) {
 
 void PacketCapture::captureLoop() {
     auto& logger = Logger::getInstance();
+    logger.info("开始数据包捕获循环");
     
-    // 开始捕获循环
-    int result = pcap_loop(handle_, -1, packetCallback, reinterpret_cast<u_char*>(this));
-    
-    if (result == -1) {
-        logger.error("数据包捕获循环出错: " + std::string(pcap_geterr(handle_)));
-    } else if (result == -2) {
-        logger.info("数据包捕获循环被中断");
+    // 使用 pcap_dispatch 而不是 pcap_loop，这样可以更好地控制循环
+    while (capturing_) {
+        int result = pcap_dispatch(handle_, 10, packetCallback, reinterpret_cast<u_char*>(this));
+        
+        if (result == -1) {
+            logger.error("数据包捕获循环出错: " + std::string(pcap_geterr(handle_)));
+            break;
+        } else if (result == 0) {
+            // 没有捕获到数据包，短暂休眠
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        } else {
+            logger.info("本次捕获到 " + std::to_string(result) + " 个数据包");
+        }
+        
+        // 检查是否需要停止
+        if (!capturing_) {
+            break;
+        }
     }
+    
+    logger.info("数据包捕获循环结束");
 }
 
 void PacketCapture::cleanup() {

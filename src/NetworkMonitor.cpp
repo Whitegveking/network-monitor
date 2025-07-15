@@ -161,12 +161,24 @@ bool NetworkMonitor::analyzeTraffic(const std::string& interface) {
     auto& logger = Logger::getInstance();
     logger.info("开始流量分析: " + interface);
     
+    if (monitoring_) {
+        logger.warning("监控已经在运行中");
+        return false;
+    }
+    
     if (!trafficAnalyzer_) {
         logger.error("流量分析器未初始化");
         return false;
     }
     
-    return trafficAnalyzer_->startAnalysis(interface);
+    monitoring_ = true;
+    
+    bool result = trafficAnalyzer_->startAnalysis(interface);
+    if (!result) {
+        monitoring_ = false;
+    }
+    
+    return result;
 }
 
 std::vector<std::string> NetworkMonitor::getNetworkInterfaces() {

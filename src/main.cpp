@@ -124,7 +124,7 @@ int main(int argc, char* argv[]) {
     };
     
     // 解析命令行参数
-    std::string interface = "eth0";
+    std::string interface = "";  // 暂时为空，稍后动态设置
     int monitorTime = 0;
     std::string scanHost;
     std::string portRange = "1-1000";
@@ -222,6 +222,27 @@ int main(int argc, char* argv[]) {
         std::cerr << "错误: 初始化网络监控器失败\n";
         logger.error("初始化网络监控器失败");
         return 1;
+    }
+    
+    // 如果没有指定接口，自动选择默认接口
+    if (interface.empty()) {
+        auto interfaces = monitor.getNetworkInterfaces();
+        // 优先选择非回环接口
+        for (const auto& iface : interfaces) {
+            if (iface != "lo" && iface != "any" && 
+                iface.find("bluetooth") == std::string::npos &&
+                iface.find("nflog") == std::string::npos &&
+                iface.find("nfqueue") == std::string::npos &&
+                iface.find("dbus") == std::string::npos) {
+                interface = iface;
+                break;
+            }
+        }
+        // 如果没找到合适的接口，使用第一个可用接口
+        if (interface.empty() && !interfaces.empty()) {
+            interface = interfaces[0];
+        }
+        logger.info("自动选择网络接口: " + interface);
     }
     
     // 执行相应操作
