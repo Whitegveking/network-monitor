@@ -6,6 +6,8 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <iomanip>
+#include <sstream>
 
 NetworkMonitor::NetworkMonitor() 
     : monitoring_(false) {
@@ -186,19 +188,37 @@ std::vector<std::string> NetworkMonitor::getNetworkInterfaces() {
 }
 
 std::string NetworkMonitor::getStatistics() const {
-    std::lock_guard<std::mutex> lock(statsMutex_);
-    
     std::ostringstream oss;
     oss << "=== 网络监控统计 ===\n";
-    oss << "总包数: " << stats_.totalPackets << "\n";
-    oss << "总字节数: " << Utils::formatBytes(stats_.totalBytes) << "\n";
-    oss << "TCP包数: " << stats_.tcpPackets << "\n";
-    oss << "UDP包数: " << stats_.udpPackets << "\n";
-    oss << "HTTP包数: " << stats_.httpPackets << "\n";
-    oss << "SIP包数: " << stats_.sipPackets << "\n";
     
-    if (stats_.totalPackets > 0) {
-        oss << "平均包大小: " << (stats_.totalBytes / stats_.totalPackets) << " 字节\n";
+    // 如果使用流量分析器，从流量分析器获取统计信息
+    if (trafficAnalyzer_) {
+        TrafficStats trafficStats = trafficAnalyzer_->getTrafficStats();
+        oss << "总包数: " << trafficStats.totalPackets << "\n";
+        oss << "总字节数: " << Utils::formatBytes(trafficStats.totalBytes) << "\n";
+        oss << "TCP包数: " << trafficStats.tcpPackets << "\n";
+        oss << "UDP包数: " << trafficStats.udpPackets << "\n";
+        oss << "ICMP包数: " << trafficStats.icmpPackets << "\n";
+        oss << "HTTP包数: " << trafficStats.httpPackets << "\n";
+        oss << "HTTPS包数: " << trafficStats.httpsPackets << "\n";
+        oss << "DNS包数: " << trafficStats.dnsPackets << "\n";
+        oss << "SIP包数: " << trafficStats.sipPackets << "\n";
+        oss << "平均包大小: " << std::fixed << std::setprecision(2) << trafficStats.avgPacketSize << " 字节\n";
+        oss << "每秒包数: " << std::fixed << std::setprecision(2) << trafficStats.packetsPerSecond << "\n";
+        oss << "每秒字节数: " << Utils::formatBytes(static_cast<uint64_t>(trafficStats.bytesPerSecond)) << "\n";
+    } else {
+        // 否则使用本地统计信息
+        std::lock_guard<std::mutex> lock(statsMutex_);
+        oss << "总包数: " << stats_.totalPackets << "\n";
+        oss << "总字节数: " << Utils::formatBytes(stats_.totalBytes) << "\n";
+        oss << "TCP包数: " << stats_.tcpPackets << "\n";
+        oss << "UDP包数: " << stats_.udpPackets << "\n";
+        oss << "HTTP包数: " << stats_.httpPackets << "\n";
+        oss << "SIP包数: " << stats_.sipPackets << "\n";
+        
+        if (stats_.totalPackets > 0) {
+            oss << "平均包大小: " << (stats_.totalBytes / stats_.totalPackets) << " 字节\n";
+        }
     }
     
     return oss.str();
